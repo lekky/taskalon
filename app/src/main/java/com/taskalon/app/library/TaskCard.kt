@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
@@ -59,7 +60,8 @@ fun TaskCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .alpha(if (dragging) 0.35f else if (task.done) 0.58f else 1f)
+            .alpha(if (task.done) 0.58f else 1f)
+            .then(if (dragging) Modifier.shadow(14.dp, shape) else Modifier)
             .clip(shape)
             .background(colors.surface)
             .border(1.dp, if (dragging) accent else colors.border, shape)

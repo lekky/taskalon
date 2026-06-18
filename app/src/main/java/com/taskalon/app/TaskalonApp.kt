@@ -1,5 +1,6 @@
 package com.taskalon.app
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +21,17 @@ import com.taskalon.app.ui.theme.TaskalonTheme
 fun TaskalonApp() {
     val vm: TaskalonViewModel = viewModel()
     val state by vm.state.collectAsState()
+
+    // System back: dismiss an open overlay, else leave the editor. Only falls through to the
+    // OS (exits the app) on the bare task list with nothing open.
+    BackHandler(enabled = state.tagSheetOpen || state.settingsOpen || state.menuOpen || state.screen == Screen.Editor) {
+        when {
+            state.tagSheetOpen -> vm.closeTagSheet()
+            state.settingsOpen -> vm.closeSettings()
+            state.menuOpen -> vm.closeMenu()
+            state.screen == Screen.Editor -> vm.closeEditor()
+        }
+    }
 
     TaskalonTheme(state.settings) {
         val colors = LocalTaskalonColors.current
