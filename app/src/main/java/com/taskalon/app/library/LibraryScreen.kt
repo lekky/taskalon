@@ -35,8 +35,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,8 +46,11 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,7 +80,10 @@ fun LibraryScreen(state: UiState, vm: TaskalonViewModel) {
     val doneCount = state.tasks.count { it.done }
     val canDrag = state.settings.sort == SortMode.MANUAL
     val openUpdated = rememberUpdatedState(openTasks)
-    val swapPx = with(LocalDensity.current) { 64.dp.toPx() }
+    // Positional drag state: the lifted card's live translation + measured card heights.
+    val gapPx = with(LocalDensity.current) { 10.dp.toPx() }
+    var dragOffsetY by remember { mutableStateOf(0f) }
+    val itemHeights = remember { mutableMapOf<String, Int>() }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
@@ -138,35 +146,51 @@ fun LibraryScreen(state: UiState, vm: TaskalonViewModel) {
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 openTasks.forEach { task ->
-                    val dragMod = if (canDrag) Modifier.pointerInput(task.id) {
-                        var acc = 0f
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { vm.startDrag(task.id); acc = 0f },
-                            onDragEnd = { vm.endDrag() },
-                            onDragCancel = { vm.endDrag() },
-                            onDrag = { change, amount ->
-                                change.consume()
-                                acc += amount.y
-                                val list = openUpdated.value
-                                val cur = list.indexOfFirst { it.id == task.id }
-                                if (cur >= 0) {
-                                    if (acc <= -swapPx && cur > 0) {
-                                        vm.reorderOver(list[cur - 1].id); acc = 0f
-                                    } else if (acc >= swapPx && cur < list.lastIndex) {
-                                        vm.reorderOver(list[cur + 1].id); acc = 0f
+                    val isDragging = state.dragId == task.id
+                    var cardMod = Modifier
+                        .onSizeChanged { itemHeights[task.id] = it.height }
+                        .zIndex(if (isDragging) 1f else 0f)
+                        .graphicsLayer { translationY = if (state.dragId == task.id) dragOffsetY else 0f }
+                    if (canDrag) {
+                        cardMod = cardMod.pointerInput(task.id) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { vm.startDrag(task.id); dragOffsetY = 0f },
+                                onDragEnd = { vm.endDrag(); dragOffsetY = 0f },
+                                onDragCancel = { vm.endDrag(); dragOffsetY = 0f },
+                                onDrag = { change, amount ->
+                                    change.consume()
+                                    dragOffsetY += amount.y
+                                    val list = openUpdated.value
+                                    val cur = list.indexOfFirst { it.id == task.id }
+                                    if (cur >= 0) {
+                                        if (dragOffsetY > 0f && cur < list.lastIndex) {
+                                            val nextId = list[cur + 1].id
+                                            val nextH = itemHeights[nextId] ?: 0
+                                            if (nextH > 0 && dragOffsetY > nextH / 2f + gapPx / 2f) {
+                                                vm.reorderOver(nextId)
+                                                dragOffsetY -= (nextH + gapPx)
+                                            }
+                                        } else if (dragOffsetY < 0f && cur > 0) {
+                                            val prevId = list[cur - 1].id
+                                            val prevH = itemHeights[prevId] ?: 0
+                                            if (prevH > 0 && dragOffsetY < -(prevH / 2f + gapPx / 2f)) {
+                                                vm.reorderOver(prevId)
+                                                dragOffsetY += (prevH + gapPx)
+                                            }
+                                        }
                                     }
-                                }
-                            },
-                        )
-                    } else Modifier
+                                },
+                            )
+                        }
+                    }
 
                     TaskCard(
                         task = task,
                         tagsById = tagsById,
-                        dragging = state.dragId == task.id,
+                        dragging = isDragging,
                         onToggleDone = { vm.toggleDone(task.id) },
                         onClick = { vm.openTask(task.id) },
-                        modifier = dragMod,
+                        modifier = cardMod,
                     )
                 }
 

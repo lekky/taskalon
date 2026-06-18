@@ -1,25 +1,51 @@
+@file:OptIn(ExperimentalTextApi::class)
+
 package com.taskalon.app.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.taskalon.app.R
 import com.taskalon.app.data.AppFont
 
 /**
- * Maps the user's font choice to a [FontFamily].
- *
- * These are platform substitutes for the design's brand families. To match the handoff
- * exactly, wire Google downloadable fonts (Spline Sans / IBM Plex Sans / Newsreader /
- * JetBrains Mono) here — call sites won't change.
+ * The design's brand families, loaded as Google downloadable fonts via Play Services
+ * (`font_certs.xml` holds the standard provider certificates). If the provider is
+ * unavailable at runtime, Compose falls back to the platform default automatically.
  */
+private val googleFontProvider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs,
+)
+
+private fun brandFamily(name: String): FontFamily {
+    val font = GoogleFont(name)
+    return FontFamily(
+        Font(font, googleFontProvider, FontWeight.Normal),
+        Font(font, googleFontProvider, FontWeight.Medium),
+        Font(font, googleFontProvider, FontWeight.SemiBold),
+        Font(font, googleFontProvider, FontWeight.Bold),
+    )
+}
+
+private val SplineSans = brandFamily("Spline Sans")
+private val IbmPlexSans = brandFamily("IBM Plex Sans")
+private val Newsreader = brandFamily("Newsreader")
+private val JetBrainsMono = brandFamily("JetBrains Mono")
+
+/** Maps the user's font choice to its brand [FontFamily]. */
 fun AppFont.toFontFamily(): FontFamily = when (this) {
-    AppFont.SPLINE -> FontFamily.SansSerif
-    AppFont.PLEX -> FontFamily.SansSerif
-    AppFont.SERIF -> FontFamily.Serif
-    AppFont.MONO -> FontFamily.Monospace
+    AppFont.SPLINE -> SplineSans
+    AppFont.PLEX -> IbmPlexSans
+    AppFont.SERIF -> Newsreader
+    AppFont.MONO -> JetBrainsMono
 }
 
 fun taskalonTypography(family: FontFamily) = Typography(
@@ -30,7 +56,7 @@ fun taskalonTypography(family: FontFamily) = Typography(
 
 /**
  * The bespoke type scale from the handoff. Apply the app font at the call site with
- * `.copy(fontFamily = LocalAppFontFamily.current)` (or use [tk]).
+ * `.copy(fontFamily = LocalAppFontFamily.current)`.
  */
 object TkText {
     val wordmark = TextStyle(fontSize = 19.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.01).em)
