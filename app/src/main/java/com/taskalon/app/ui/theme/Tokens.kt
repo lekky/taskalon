@@ -44,7 +44,7 @@ val DarkColors = TaskalonColors(
 
 val LocalTaskalonColors = staticCompositionLocalOf { LightColors }
 val LocalAccent = staticCompositionLocalOf { Color(0xFF0E9F6E) }
-val LocalAppFontFamily = staticCompositionLocalOf { FontFamily.SansSerif }
+val LocalAppFontFamily = staticCompositionLocalOf<FontFamily> { FontFamily.SansSerif }
 
 /** Fixed priority colors (not themed): index 0 = Low(1), 1 = Medium(2), 2 = High(3). */
 val PriorityColors = listOf(
