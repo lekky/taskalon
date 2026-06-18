@@ -14,3 +14,6 @@ local.properties
 
 # Local Claude Code settings
 /.claude/
+
+# Design handoff reference (kept local, not committed — see CLAUDE.md)
+/design_handoff_taskalon/
