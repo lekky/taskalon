@@ -1,46 +1,38 @@
 package com.taskalon.app
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.taskalon.app.editor.EditorScreen
+import com.taskalon.app.library.LibraryScreen
+import com.taskalon.app.settings.SettingsSheet
+import com.taskalon.app.tags.ManageTagsSheet
+import com.taskalon.app.ui.components.TaskalonToast
+import com.taskalon.app.ui.theme.LocalTaskalonColors
 import com.taskalon.app.ui.theme.TaskalonTheme
 
-/**
- * Placeholder app shell. This compiles and launches a simple landing screen so CI is green;
- * the real Library / task screens land when the design handoff is implemented.
- */
 @Composable
 fun TaskalonApp() {
-    TaskalonTheme {
-        Scaffold { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = "Taskalon",
-                    style = MaterialTheme.typography.headlineMedium,
-                )
-                Text(
-                    text = if (BuildConfig.IS_QA) "QA build" else "Local-first tasks for Android",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+    val vm: TaskalonViewModel = viewModel()
+    val state by vm.state.collectAsState()
+
+    TaskalonTheme(state.settings) {
+        val colors = LocalTaskalonColors.current
+        Box(Modifier.fillMaxSize().background(colors.bg)) {
+            if (state.loaded) {
+                when (state.screen) {
+                    Screen.Library -> LibraryScreen(state, vm)
+                    Screen.Editor -> EditorScreen(state, vm)
+                }
             }
+            if (state.settingsOpen) SettingsSheet(state, vm)
+            if (state.tagSheetOpen) ManageTagsSheet(state, vm)
+            state.toast?.let { TaskalonToast(it) }
         }
     }
 }
