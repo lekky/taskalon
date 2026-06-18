@@ -1,0 +1,68 @@
+name: Android Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build APKs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: |
+          yes | sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" > /dev/null
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # Compile check on every PR/push: builds both flavors (qaDebug + prodDebug).
+      - name: Build debug APKs
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload debug APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: taskalon-debug-apks
+          path: app/build/outputs/apk/*/debug/*.apk
+          if-no-files-found: error
+
+      # On merge to main, build the release variants and publish both as a GitHub Release.
+      # Release builds are signed with TASKALON_KEYSTORE if configured (see repo secrets),
+      # otherwise debug-signed so the APKs are still installable.
+      - name: Build release APKs (prod + qa)
+        if: github.event_name == 'push'
+        run: ./gradlew assembleProdRelease assembleQaRelease --stacktrace
+
+      - name: Publish release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Taskalon build ${{ github.run_number }}
+          body: |
+            Automated build from commit ${{ github.sha }}.
+
+            - `app-prod-release.apk` — production build (`com.taskalon.app`)
+            - `app-qa-release.apk` — QA build (`com.taskalon.app.qa`), installs alongside prod
+          files: app/build/outputs/apk/*/release/*.apk

@@ -1,0 +1,4 @@
+<resources>
+    <!-- Overrides the main app_name for the QA flavor only; prod keeps "Taskalon". -->
+    <string name="app_name">Taskalon QA</string>
+</resources>
